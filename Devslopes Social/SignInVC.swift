@@ -38,13 +38,13 @@ class SignInVC: UIViewController {
                 if error == nil{
                     print("ABRAHAM : Email user authenticated with firebase")
                     if let user = user {
-                        self.completeSignIn(id: user.uid)
+                        let userData = ["provider" : user.providerID]
+                        self.completeSignIn(id: user.uid, userData: userData)
                     }
                     
                 }else{
                     FIRAuth.auth()?.createUser(withEmail: email, password: password, completion: { (user, error) in
                         if error != nil{
-                            print("ABRAHAM : Fireabe Unable to create user with email")
                             let alert = UIAlertController(title: "Email in use", message: "It looks that an account is already linked with the email", preferredStyle: .alert)
                             let okButton = UIAlertAction(title: "OK", style: .default, handler: nil)
                             alert.addAction(okButton)
@@ -53,7 +53,8 @@ class SignInVC: UIViewController {
                         }else{
                             print("ABRAHAM : Firebase User successfully created")
                             if let user = user {
-                                self.completeSignIn(id: user.uid)
+                                let userData = ["provider" : user.providerID]
+                                self.completeSignIn(id: user.uid, userData: userData)
                             }
                         }
                     })
@@ -93,13 +94,15 @@ class SignInVC: UIViewController {
             }else{
                 print("ABRAHAM : Succesfully authenticated with Firebase")
                 if let user = user {
-                    self.completeSignIn(id: user.uid)
+                    let userData = ["provider" : credential.provider]
+                    self.completeSignIn(id: user.uid, userData: userData)
                 }
             }
         })
     }
     
-    func completeSignIn(id: String){
+    func completeSignIn(id: String, userData: [String : String]){
+        DataService.ds.createFirebaseDBUser(uid: id, userData: userData)
         KeychainWrapper.standard.set(id, forKey: KEY_UID)
         performSegue(withIdentifier: "feedSegue", sender: nil)
     }
