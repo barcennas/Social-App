@@ -26,5 +26,6 @@ class CircularImageView: UIImageView {
         //In this ponint the width and height of the button has been rendered, so it gets the value
         
         layer.cornerRadius = self.frame.width / 2
+        clipsToBounds = true
     }
 }
