@@ -13,7 +13,9 @@ import SwiftKeychainWrapper
 class FeedVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     
     @IBOutlet weak var tableView : UITableView!
-    @IBOutlet var addImage: CircularImageView!
+    @IBOutlet weak var addImage: CircularImageView!
+    @IBOutlet weak var captionTxt: FancyField!
+    @IBOutlet weak var postButton: RoundButton!
 
     var posts : [Post] = []
     var imagePicker : UIImagePickerController!
@@ -31,6 +33,7 @@ class FeedVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UIIm
         
         DataService.ds.REF_POSTS.observe(.value, with: { (snapshot) in
             if let snapshot = snapshot.children.allObjects as? [FIRDataSnapshot] {
+                self.posts = []
                 for snap in snapshot {
                     if let postDict = snap.value as? [String : Any]{
                         let postId = snap.key
@@ -91,6 +94,57 @@ class FeedVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UIIm
             print("Invalid Image Selected")
         }
         imagePicker.dismiss(animated: true, completion: nil)
+    }
+    
+    
+    @IBAction func postButtonTapped(_ sender: Any) {
+        guard let caption = captionTxt.text, !caption.isEmpty else {
+            let alert = UIAlertController(title: "Caption Required", message: "In order to post something you need to add a caption to your image", preferredStyle: .alert)
+            let ok = UIAlertAction(title: "OK", style: .default, handler: nil)
+            alert.addAction(ok)
+            present(alert, animated: true, completion: nil)
+            return
+        }
+        
+        if addImage.image == #imageLiteral(resourceName: "add-image"){
+            let alert = UIAlertController(title: "Image Required", message: "In order to post something you need to add an image", preferredStyle: .alert)
+            let ok = UIAlertAction(title: "OK", style: .default, handler: nil)
+            alert.addAction(ok)
+            present(alert, animated: true, completion: nil)
+        }else{
+            if let image = addImage.image{
+                if let imageData = UIImageJPEGRepresentation(image, 0.6){
+                    
+                    let imageUID = NSUUID().uuidString
+                    let metaData = FIRStorageMetadata()
+                    metaData.contentType = "image/jpeg"
+                    
+                    DataService.ds.REF_POST_IMAGES.child(imageUID).put(imageData, metadata: metaData, completion: { (metadata, error) in
+                        if error != nil {
+                            print("AB: Unable to load image to Firebase Storage")
+                        }else{
+                            print("Image Uploaded to Firebase Storage")
+                            if let downloadUrl = metadata?.downloadURL()?.absoluteString{
+                                self.postToFirebase(imgUrl: downloadUrl)
+                            }
+                        }
+                    })
+                }
+            }
+
+        }
+    }
+    
+    func postToFirebase(imgUrl : String){
+        let post : [String : Any] = ["caption" : captionTxt.text!, "imageUrl" : imgUrl, "likes" : 0]
+        let firebasePost = DataService.ds.REF_POSTS.childByAutoId()
+        firebasePost.setValue(post)
+        //link post to the user
+        //DataService.ds.createFirebaseDBUser(uid: <#T##String#>, userData: <#T##[String : String]#>)
+        
+        captionTxt.text = ""
+        addImage.image = #imageLiteral(resourceName: "add-image")
+        tableView.reloadData()
     }
     
     
